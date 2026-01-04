@@ -2,86 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NYC Taxi Fare Estimator</title>
+    <title>Fare Prediction</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="container">
-    <header class="header">
-        <h1>NYC Taxi Fare Estimator 🚕</h1>
-        <p class="subtitle">
-            Predict your yellow or green taxi fare before you ride
-        </p>
-    </header>
+<div class="page">
+    <div class="container">
 
-    {% if error %}
-        <div class="error">{{ error }}</div>
-    {% endif %}
-
-    {% if prediction %}
-        <div class="result-card">
-            <p class="result-label">Estimated Fare</p>
-            <p class="fare">${{ prediction }}</p>
-            <p class="result-meta">
-                Includes distance, time, location & passenger factors
+        <header class="header">
+            <h1>Fare Prediction</h1>
+            <p class="subtitle">
+                Get instant fare estimates for your Manhattan taxi trip
             </p>
-        </div>
-    {% endif %}
+        </header>
 
-    <form action="/predict" method="post" class="form">
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
 
-        <div class="form-group">
-            <label>Pickup Zone</label>
-            <input list="zones" name="pickup_zone" placeholder="Select pickup zone" required>
-        </div>
+        {% if prediction %}
+            <div class="fare-highlight">
+                <p class="fare-title">Estimated Fare</p>
+                <p class="fare-amount">${{ prediction }}</p>
+                <p class="fare-subtext">
+                    Based on the selected trip details
+                </p>
+            </div>
+        {% endif %}
 
-        <div class="form-group">
-            <label>Dropoff Zone</label>
-            <input list="zones" name="dropoff_zone" placeholder="Select dropoff zone" required>
-        </div>
+        <form action="/predict" method="post" class="form">
 
-        <datalist id="zones">
-            {% for z in zones %}
-                <option value="{{ z }}">
-            {% endfor %}
-        </datalist>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pickup Location</label>
+                    <input
+                        list="zones"
+                        name="pickup_zone"
+                        placeholder="Select location..."
+                        value="{{ pickup_zone | default('') }}"
+                        required
+                    >
+                </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>Pickup Date</label>
-                <input type="date" name="pickup_date" required>
+                <div class="form-group">
+                    <label>Dropoff Location</label>
+                    <input
+                        list="zones"
+                        name="dropoff_zone"
+                        placeholder="Select location..."
+                        value="{{ dropoff_zone | default('') }}"
+                        required
+                    >
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Pickup Time</label>
-                <input type="time" name="pickup_time" required>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Passenger Count</label>
-            <select name="passengers" required>
-                {% for n in [1,2,3,4,5,6] %}
-                    <option value="{{ n }}">{{ n }}</option>
+            <datalist id="zones">
+                {% for z in zones %}
+                    <option value="{{ z }}">
                 {% endfor %}
-            </select>
-        </div>
+            </datalist>
 
-        <button type="submit" class="primary-btn">
-            Predict Fare
-        </button>
-    </form>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Pickup Date</label>
+                    <input
+                        type="date"
+                        name="pickup_date"
+                        value="{{ pickup_date | default('') }}"
+                        required
+                    >
+                </div>
 
-    <footer class="footer">
-        <p>
-            Powered by <strong>LightGBM</strong> · <strong>Mapbox</strong> · <strong>FastAPI</strong>
-        </p>
-        <p>
-            Deployed on <strong>DigitalOcean</strong> · PostgreSQL-backed inference cache
-        </p>
-    </footer>
+                <div class="form-group">
+                    <label>Pickup Time</label>
+                    <input
+                        type="time"
+                        name="pickup_time"
+                        value="{{ pickup_time | default('') }}"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Number of Passengers</label>
+                <select name="passengers" required>
+                    {% for n in [1,2,3,4,5,6] %}
+                        <option value="{{ n }}"
+                            {% if passengers == n %}selected{% endif %}>
+                            {{ n }} Passenger{{ 's' if n > 1 else '' }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="button-row">
+                <button type="submit" class="primary-btn">
+                    Calculate Fare Prediction
+                </button>
+
+                <button type="button" class="secondary-btn" onclick="clearForm()">
+                    Clear
+                </button>
+            </div>
+
+        </form>
+
+    </div>
 </div>
+
+<script>
+function clearForm() {
+    window.location.href = "/";
+}
+</script>
 
 </body>
 </html>

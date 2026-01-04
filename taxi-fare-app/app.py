@@ -221,7 +221,6 @@ async def predict(
     passengers: int = Form(...)
 ):
     try:
-        # 1. Preprocess the input -> 1-row feature DF
         X = preprocess_input(
             pickup_zone_name=pickup_zone,
             dropoff_zone_name=dropoff_zone,
@@ -230,16 +229,12 @@ async def predict(
             passenger_count=passengers,
         )
 
-        # 2. Try cache first
         cached = get_cached_prediction(X)
         if cached is not None:
             pred = cached
         else:
-            # 3. Model prediction (undo log1p)
             log_pred = model.predict(X)[0]
             pred = float(np.expm1(log_pred))
-
-            # 4. Save to cache
             save_cached_prediction(X, pred)
 
         return templates.TemplateResponse(
@@ -248,6 +243,13 @@ async def predict(
                 "request": request,
                 "zones": ZONES,
                 "prediction": round(pred, 2),
+
+                # persist inputs
+                "pickup_zone": pickup_zone,
+                "dropoff_zone": dropoff_zone,
+                "pickup_date": pickup_date,
+                "pickup_time": pickup_time,
+                "passengers": passengers,
             },
         )
 
@@ -260,6 +262,7 @@ async def predict(
                 "error": str(e),
             },
         )
+
 
 
 if __name__ == "__main__":
