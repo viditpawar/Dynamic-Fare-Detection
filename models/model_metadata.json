@@ -1,0 +1,14 @@
+{
+  "feature_cols": [
+    "trip_distance",
+    "passenger_count",
+    "pulocationid",
+    "dolocationid",
+    "pickup_hour",
+    "pickup_dow"
+  ],
+  "target": "log_total_amount",
+  "clipping_quantile": 0.999,
+  "train_test_split": "time-based, first 80% train, last 20% test",
+  "model_type": "LightGBM LGBMRegressor on log_total_amount"
+}
