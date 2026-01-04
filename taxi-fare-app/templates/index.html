@@ -1,54 +1,87 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>NYC Taxi Fare Predictor</title>
+    <meta charset="UTF-8">
+    <title>NYC Taxi Fare Estimator</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+
 <div class="container">
-    <h1>NYC Taxi Fare Estimator</h1>
+    <header class="header">
+        <h1>NYC Taxi Fare Estimator 🚕</h1>
+        <p class="subtitle">
+            Predict your yellow or green taxi fare before you ride
+        </p>
+    </header>
 
     {% if error %}
         <div class="error">{{ error }}</div>
     {% endif %}
 
     {% if prediction %}
-        <div class="result">
-            Estimated Fare: <strong>${{ prediction }}</strong>
+        <div class="result-card">
+            <p class="result-label">Estimated Fare</p>
+            <p class="fare">${{ prediction }}</p>
+            <p class="result-meta">
+                Includes distance, time, location & passenger factors
+            </p>
         </div>
     {% endif %}
 
-    <form action="/predict" method="post">
+    <form action="/predict" method="post" class="form">
 
-	<label>Pickup Zone</label>
-	<select name="pickup_zone" required size="10" class="zone-select">
-    	{% for z in zones %}
-        	<option value="{{ z }}">{{ z }}</option>
-    	{% endfor %}
-	</select>
+        <div class="form-group">
+            <label>Pickup Zone</label>
+            <input list="zones" name="pickup_zone" placeholder="Select pickup zone" required>
+        </div>
 
-	<label>Dropoff Zone</label>
-	<select name="dropoff_zone" required size="10" class="zone-select">
-    	{% for z in zones %}
-        	<option value="{{ z }}">{{ z }}</option>
-    	{% endfor %}
-	</select>
+        <div class="form-group">
+            <label>Dropoff Zone</label>
+            <input list="zones" name="dropoff_zone" placeholder="Select dropoff zone" required>
+        </div>
 
-        <label>Pickup Date</label>
-        <input type="date" name="pickup_date" required>
-
-        <label>Pickup Time</label>
-        <input type="time" name="pickup_time" required>
-
-        <label>Passenger Count</label>
-        <select name="passengers" required>
-            {% for n in [1,2,3,4,5,6] %}
-                <option value="{{ n }}">{{ n }}</option>
+        <datalist id="zones">
+            {% for z in zones %}
+                <option value="{{ z }}">
             {% endfor %}
-        </select>
+        </datalist>
 
-        <button type="submit">Predict Fare</button>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Pickup Date</label>
+                <input type="date" name="pickup_date" required>
+            </div>
+
+            <div class="form-group">
+                <label>Pickup Time</label>
+                <input type="time" name="pickup_time" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Passenger Count</label>
+            <select name="passengers" required>
+                {% for n in [1,2,3,4,5,6] %}
+                    <option value="{{ n }}">{{ n }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="primary-btn">
+            Predict Fare
+        </button>
     </form>
+
+    <footer class="footer">
+        <p>
+            Powered by <strong>LightGBM</strong> · <strong>Mapbox</strong> · <strong>FastAPI</strong>
+        </p>
+        <p>
+            Deployed on <strong>DigitalOcean</strong> · PostgreSQL-backed inference cache
+        </p>
+    </footer>
 </div>
+
 </body>
 </html>

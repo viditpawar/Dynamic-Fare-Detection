@@ -1,52 +1,129 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+    margin: 0;
+    padding: 0;
 }
 
 .container {
-    width: 420px;
-    margin: 40px auto;
-    background: white;
-    padding: 25px;
+    max-width: 480px;
+    margin: 50px auto;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+}
+
+.subtitle {
+    color: #475569;
+    font-size: 0.95rem;
+    margin-top: 6px;
+}
+
+.form {
+    margin-top: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.9rem;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
     border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
-
-.zone-select {
-    width: 100%;
-    max-height: 260px;
-    overflow-y: auto;
-}
-
-input, select, button {
-    width: 100%;
-    padding: 10px;
-    margin: 8px 0;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-button {
-    background: black;
-    color: white;
     border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    background: #111827;
+    color: white;
     cursor: pointer;
 }
 
-button:hover {
-    background: #444;
+.primary-btn:hover {
+    background: #1f2937;
 }
 
-.result {
-    background: #e2ffe2;
-    padding: 12px;
-    border-radius: 5px;
-    margin-bottom: 15px;
+.result-card {
+    background: linear-gradient(135deg, #e0f2fe, #f0f9ff);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.result-label {
+    font-size: 0.85rem;
+    color: #0369a1;
+    margin-bottom: 4px;
+}
+
+.fare {
+    font-size: 2.4rem;
+    font-weight: 700;
+    margin: 6px 0;
+}
+
+.result-meta {
+    font-size: 0.8rem;
+    color: #475569;
 }
 
 .error {
-    background: #ffd3d3;
+    background: #fee2e2;
+    color: #7f1d1d;
     padding: 12px;
-    border-radius: 5px;
+    border-radius: 8px;
     margin-bottom: 15px;
+    font-size: 0.85rem;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 0.75rem;
+    color: #64748b;
 }
