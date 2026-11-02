@@ -23,11 +23,10 @@ dist/
 build/
 *.egg-info/
 
-# Model artifacts (too big for git)
-models/
-taxi-fare-app/models/
+# Model artifacts: only the served model is tracked
 *.joblib
 *.pkl
+!models/lightgbm_fare_model.joblib
 
 # Docker
 *.tar

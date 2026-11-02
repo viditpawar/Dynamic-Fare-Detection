@@ -5,7 +5,10 @@
     "pulocationid",
     "dolocationid",
     "pickup_hour",
-    "pickup_dow"
+    "pickup_dow",
+    "pickup_month",
+    "pickup_weekofyear",
+    "pickup_year"
   ],
   "target": "log_total_amount",
   "clipping_quantile": 0.999,

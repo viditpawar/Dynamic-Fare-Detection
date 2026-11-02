@@ -1,396 +1,124 @@
-# NYC Dynamic Taxi Fare Detection System
+# NYC Taxi Fare Prediction
 
-<div align="center">
+A FastAPI web app that estimates the fare of a Manhattan yellow or green taxi trip before it starts, using a LightGBM regression model trained on NYC TLC trip records.
 
-![Status](https://img.shields.io/badge/status-active-success.svg)
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.95%2B-009688)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+Originally built as a group project for MIS547.
 
-A production-grade machine learning service that predicts NYC yellow and green taxi fares in real-time using advanced regression modeling and cloud-native architecture.
+## How it works
 
-[Features](#features) • [Architecture](#cloud-architecture) • [Getting Started](#getting-started) • [API Documentation](#api-documentation) • [Deployment](#deployment)
-
-</div>
-
----
-
-## Overview
-
-The NYC Dynamic Taxi Fare Detection System is a sophisticated ML-powered service that provides accurate fare estimates **before a ride begins**. This project showcases best practices in deploying machine learning models as scalable, observable, and performant cloud services.
-
-Users interact with an intuitive web interface to:
-- Select pickup and dropoff locations in Manhattan
-- Specify date, time, and passenger count
-- Receive real-time fare predictions with high accuracy
-
----
-
-## Features
-
-### 🤖 **Intelligent Predictions**
-- **High Accuracy**: LightGBM regression model with ~92% R² on original fare values
-- **Real-time Inference**: Sub-100ms prediction latency
-- **Feature Engineering**: Computes trip distance via Mapbox Directions API
-- **Data-driven**: Trained on 36 months of NYC TLC Yellow & Green taxi data
-
-### ⚡ **Performance & Optimization**
-- **Model Caching**: Models loaded once at startup, zero runtime overhead
-- **Inference Cache**: PostgreSQL-backed cache prevents redundant computations
-- **SQL Optimization**: Parameterized queries for security and performance
-- **Containerized**: Docker-ready for seamless deployment
-
-### 🎨 **User Experience**
-- **Clean Web UI**: Responsive, mobile-friendly interface
-- **Instant Feedback**: Real-time fare calculations
-- **Location Search**: Searchable Manhattan taxi zone finder
-- **Professional Design**: Polished, production-ready interface
-
-### ☁️ **Cloud-Native Architecture**
-- **FastAPI Framework**: Modern, async-capable Python web framework
-- **PostgreSQL**: Persistent cache and inference logs
-- **DigitalOcean Spaces**: Scalable model registry and artifact storage
-- **Mapbox Integration**: Accurate route distance computation
-- **Load Balancing**: VPC-deployed infrastructure with redundancy
-
-### 📊 **Model Details**
-| Aspect | Value |
-|--------|-------|
-| **Model Type** | LightGBM LGBMRegressor |
-| **Target Variable** | log(total_amount) |
-| **Training Data** | NYC TLC Yellow & Green taxis (36 months) |
-| **Performance (R²)** | ~92% |
-| **Feature Set** | trip_distance, passenger_count, pickup_hour, pickup_dow, pickup_location, dropoff_location |
-| **Data Split** | Time-based: 80% train, 20% test |
-
----
-
-## Cloud Architecture
+1. The user picks pickup and dropoff zones, a date and time, and a passenger count.
+2. `preprocess.py` looks up each zone's coordinates and asks the Mapbox Directions API for the driving distance.
+3. If Postgres is configured, `app.py` checks for a cached prediction with the same features.
+4. Otherwise the model predicts `log(total_amount + 1)`, which is converted back to dollars and cached.
 
 ```
-┌─────────────────────────────────────────────┐
-│         User (Web Browser)                  │
-└────────────────┬────────────────────────────┘
-                 │ HTTP
-┌────────────────▼────────────────────────────┐
-│   Load Balancer (DigitalOcean)              │
-└────────────────┬────────────────────────────┘
-                 │
-        ┌────────┼────────┐
-        │                 │
-┌───────▼──────┐  ┌──────▼────────┐
-│ FastAPI App  │  │ FastAPI App   │
-│ (Container)  │  │ (Container)   │
-└───────┬──────┘  └──────┬────────┘
-        │                 │
-        └────────┬────────┘
-                 │
-        ┌────────▼────────┐
-        │   PostgreSQL    │
-        │  (Inference     │
-        │   Cache)        │
-        └────────┬────────┘
-                 │
-        ┌────────┴────────┐
-        │                 │
-    ┌───▼────┐      ┌─────▼──┐
-    │ Mapbox │      │DO Space│
-    │ Routes │      │(Models)│
-    └────────┘      └────────┘
+Browser ── form POST ──> FastAPI (taxi-fare-app/app.py)
+                           ├── Mapbox Directions API (trip distance)
+                           ├── LightGBM model (loaded from models/ at startup)
+                           └── Postgres (optional prediction cache)
 ```
 
-### Components
+## Model
 
-| Component | Purpose |
-|-----------|---------|
-| **FastAPI Service** | REST API and web UI serving predictions |
-| **LightGBM Model** | Trained regression model for fare prediction |
-| **PostgreSQL** | Caches inference results and logs requests |
-| **Mapbox API** | Computes accurate driving distances |
-| **DigitalOcean Spaces** | Stores trained models and artifacts |
-| **Docker** | Containerization for reproducible deployment |
+The served model is `models/lightgbm_fare_model.joblib`. It was trained in [fare_model_experiments.ipynb](fare_model_experiments.ipynb) on about 7 million sampled trips, using a time-based 80/20 split. Fares above the 99.9th percentile were removed first.
 
----
+**Target:** `log1p(total_amount)`
 
-## Getting Started
+**Features:** `trip_distance`, `passenger_count`, `pulocationid`, `dolocationid`, `pickup_hour`, `pickup_dow`, `pickup_month`, `pickup_weekofyear`, `pickup_year`
 
-### Prerequisites
+Results on the held-out 20%, in dollars:
 
-- Python 3.8 or higher
-- PostgreSQL (for caching)
-- Mapbox API key ([Get one here](https://account.mapbox.com/auth/signup/))
-- Docker & Docker Compose (optional, for containerized deployment)
+| Model | R² | RMSE |
+|---|---|---|
+| LightGBM (served) | 0.917 | $5.99 |
+| XGBoost | 0.871 | $7.77 |
+| Mean-fare baseline | -0.019 | $21.01 |
 
-### Installation
+LightGBM's MAE is $3.26 and its MAPE is 11.4%.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/viditpawar/Dynamic-Fare-Detection.git
-   cd Dynamic-Fare-Detection
-   ```
+### Known limitations
 
-2. **Create a virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+- **Distance differs between training and serving.** The model was evaluated on each trip's recorded distance, but the app uses the Mapbox route between zone centroids. Live accuracy is likely lower than the table shows, and has not been measured.
+- **Manhattan only.** The app accepts the 67 Manhattan zones in `manhattan_zone_lookup.csv`.
+- **Same-zone trips are weak.** Both ends of the route are the same centroid, so the distance is close to zero.
 
-3. **Install dependencies**
-   ```bash
-   cd taxi-fare-app
-   pip install -r requirements.txt
-   ```
+## Running locally
 
-4. **Configure environment variables**
-   Create a `.env` file in the `taxi-fare-app` directory:
-   ```env
-   # PostgreSQL Configuration
-   PG_USER=your_pg_user
-   PG_PASSWORD=your_pg_password
-   PG_HOST=localhost
-   PG_PORT=5432
-   PG_DATABASE=taxi_fare_cache
-   PG_SSLMODE=disable
-   
-   # Mapbox API Key
-   MAPBOX_API_KEY=your_mapbox_token
-   ```
+Requires Python 3.11 and a [Mapbox access token](https://account.mapbox.com/).
 
-5. **Initialize the database**
-   ```bash
-   psql -U postgres -c "CREATE DATABASE taxi_fare_cache;"
-   ```
-
-### Running the Application
-
-#### Local Development
 ```bash
+git clone https://github.com/viditpawar/Dynamic-Fare-Detection.git
+cd Dynamic-Fare-Detection
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r taxi-fare-app/requirements.txt
+cp .env.example .env      # then set MAPBOX_TOKEN
 cd taxi-fare-app
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+uvicorn app:app --reload --port 8000
 ```
 
-Access the application at: `http://localhost:8000`
+Open http://localhost:8000.
 
-#### Docker Deployment
+### With Docker
+
+Run from the repository root:
+
 ```bash
-# Build the container
-docker build -t taxi-fare-app:latest .
-
-# Run with Docker Compose
-docker-compose up -d
+docker build -t taxi-fare-app .
+docker run --rm -p 8000:8000 --env-file .env taxi-fare-app
 ```
 
----
+## Configuration
 
-## API Documentation
+| Variable | Purpose | Required |
+|---|---|---|
+| `MAPBOX_TOKEN` | Mapbox Directions API token | Yes |
+| `PG_HOST`, `PG_DATABASE`, `PG_USER`, `PG_PASSWORD` | Postgres connection | No, caching is off without them |
+| `PG_PORT` | Postgres port (default `5432`) | No |
+| `PG_SSLMODE` | Postgres SSL mode (default `require`) | No |
 
-### Interactive API Docs
-Once running, visit `http://localhost:8000/docs` for interactive Swagger UI documentation.
+The cache expects a `fare_prediction_cache` table with one column per model feature, `predicted_fare`, `created_at`, and a unique constraint across the features. The repository does not create this table. If it is missing, the app logs the error and still returns predictions.
 
-### Predict Fare Endpoint
+## Routes
 
-**POST** `/predict`
+| Route | Description |
+|---|---|
+| `GET /` | The fare form |
+| `POST /predict` | Takes form fields `pickup_zone`, `dropoff_zone`, `pickup_date`, `pickup_time` and `passengers`, and returns the page with the estimate |
 
-**Request Body:**
-```json
-{
-  "pickup_zone": "Upper East Side South",
-  "dropoff_zone": "Midtown Center",
-  "pickup_hour": 14,
-  "pickup_dow": 2,
-  "passenger_count": 2,
-  "date": "2024-04-15"
-}
-```
+Both routes return HTML. There is no JSON API.
 
-**Response:**
-```json
-{
-  "estimated_fare": 18.50,
-  "currency": "USD",
-  "confidence": 0.92,
-  "model_version": "1.0",
-  "computed_distance_miles": 3.2,
-  "message": "Fare prediction successful"
-}
-```
+## Tests
 
----
-
-## Project Structure
-
-```
-Dynamic-Fare-Detection/
-├── taxi-fare-app/              # Main application
-│   ├── app.py                  # FastAPI application
-│   ├── model_loader.py         # Model initialization
-│   ├── preprocess.py           # Feature preprocessing
-│   ├── train_model.py          # Model training pipeline
-│   ├── taxi_ingest.py          # Data ingestion utilities
-│   ├── requirements.txt        # Python dependencies
-│   ├── Dockerfile              # Container configuration
-│   ├── templates/
-│   │   └── index.html          # Web UI
-│   └── static/
-│       └── style.css           # Frontend styling
-├── models/                      # Trained models
-│   ├── lightgbm_fare_model.joblib
-│   ├── xgb_fare_model.joblib
-│   └── model_metadata.json
-├── manhattan_zone_lookup.csv   # Location reference data
-└── README.md                    # This file
-```
-
----
-
-## Model Training
-
-### Training Data
-- **Source**: NYC TLC Yellow & Green Taxi Trip Records
-- **Duration**: 36 months
-- **Records**: Millions of transactions
-- **Features**: Distance, time, location, passenger count, day of week
-
-### Training Process
 ```bash
-cd taxi-fare-app
-python train_model.py
+pip install -r requirements-dev.txt
+pytest
 ```
 
-### Evaluation Metrics
-- **R² Score**: ~0.92 on original fare values
-- **RMSE**: Minimized through quantile clipping at 99.9th percentile
-- **Train/Test Split**: Time-based (80/20)
+The tests use the real model file and stub Mapbox, so they need no network access, token or database.
 
----
+## Retraining
 
-## Deployment
+These scripts need a Postgres database containing `taxi_trips_manhattan_ml`, which the repository does not create.
 
-### Production Checklist
-- [ ] Configure environment variables securely
-- [ ] Set up PostgreSQL with secure credentials
-- [ ] Obtain Mapbox API key
-- [ ] Configure firewall rules (allow only necessary ports)
-- [ ] Set `PG_SSLMODE=require` for external databases
-- [ ] Enable health check endpoints
-- [ ] Set up monitoring and logging
+- `taxi_ingest.py` downloads a month of TLC trip data, samples 5% of it and loads it into Postgres.
+- `train_model.py` retrains on the trailing 36 months, logs metrics to Postgres and uploads the model to a DigitalOcean Space. It needs `MLFLOW_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and optionally `SPACES_MODEL_BUCKET`.
 
-### Scaling Considerations
-- **Horizontal Scaling**: Run multiple FastAPI containers behind a load balancer
-- **Caching**: PostgreSQL cache reduces API calls to external services
-- **Model Updates**: Store new models in DigitalOcean Spaces and reload gracefully
+The app does not download models from the Space. To serve a new model, replace `models/lightgbm_fare_model.joblib`.
 
-### Environment Variables Reference
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `PG_USER` | PostgreSQL username | Yes |
-| `PG_PASSWORD` | PostgreSQL password | Yes |
-| `PG_HOST` | PostgreSQL host address | Yes |
-| `PG_PORT` | PostgreSQL port | No (default: 5432) |
-| `PG_DATABASE` | Database name | Yes |
-| `PG_SSLMODE` | SSL mode for DB connection | No (default: require) |
-| `MAPBOX_API_KEY` | Mapbox API token | Yes |
+## Project structure
 
----
-
-## Performance Benchmarks
-
-| Operation | Latency | Notes |
-|-----------|---------|-------|
-| **Model Inference** | <10ms | With in-memory model |
-| **Total Request** | 50-150ms | Includes API calls |
-| **Cache Hit** | <5ms | Database lookup only |
-| **Mapbox Distance API** | 100-200ms | Network dependent |
-
----
-
-## Technologies Used
-
-| Technology | Purpose |
-|-----------|---------|
-| **Python 3.8+** | Core language |
-| **FastAPI** | Web framework |
-| **LightGBM** | ML model |
-| **PostgreSQL** | Caching layer |
-| **Mapbox** | Route optimization |
-| **Docker** | Containerization |
-| **Uvicorn** | ASGI server |
-| **Jinja2** | Template engine |
-
----
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Author
-
-**Vidit Pawar**
-- GitHub: [@viditpawar](https://github.com/viditpawar)
-- Project: [Dynamic-Fare-Detection](https://github.com/viditpawar/Dynamic-Fare-Detection)
-
----
-
-## Acknowledgments
-
-- NYC TLC for providing publicly available taxi data
-- Mapbox for route distance APIs
-- LightGBM and scikit-learn communities for excellent ML libraries
-- FastAPI documentation and community
-
----
-
-## Support & Troubleshooting
-
-### Common Issues
-
-**PostgreSQL Connection Error**
-- Verify PostgreSQL is running: `psql --version`
-- Check connection string in `.env`
-- Ensure database exists: `psql -l | grep taxi_fare_cache`
-
-**Mapbox API Errors**
-- Verify API key is valid and has routing permissions
-- Check rate limits: https://account.mapbox.com/usage/
-
-**Model Loading Fails**
-- Ensure model files exist in `models/` directory
-- Check file permissions: `ls -la models/`
-- Verify requirements are installed
-
-### Performance Tuning
-
-- **Increase Cache Size**: Adjust PostgreSQL `shared_buffers`
-- **Connection Pooling**: Use PgBouncer for connection management
-- **Model Optimization**: Consider quantization for faster inference
-
----
-
-## Roadmap
-
-- [ ] Add support for additional NYC boroughs
-- [ ] Implement surge pricing predictions
-- [ ] Add historical fare trend analysis
-- [ ] Multi-model ensemble for improved accuracy
-- [ ] GraphQL API endpoint
-- [ ] Advanced analytics dashboard
-- [ ] Real-time traffic integration
-
----
-
-**Last Updated**: April 2024  
-**Version**: 1.0.0
+```
+├── taxi-fare-app/
+│   ├── app.py                  # FastAPI routes and prediction cache
+│   ├── model_loader.py         # Loads the model at startup
+│   ├── preprocess.py           # Zone lookup, Mapbox call, feature building
+│   ├── taxi_ingest.py          # TLC data ingestion
+│   ├── train_model.py          # Retraining script
+│   ├── templates/, static/     # Web UI
+│   └── requirements.txt
+├── models/                     # Served model and its metadata
+├── tests/
+├── fare_model_experiments.ipynb  # Model training and comparison
+└── Dockerfile
+```

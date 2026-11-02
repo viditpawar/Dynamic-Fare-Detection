@@ -1,0 +1,3 @@
+-r taxi-fare-app/requirements.txt
+pytest
+httpx

@@ -203,9 +203,9 @@ def save_cached_prediction(features_df, fare):
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "zones": ZONES,  # pass zones into template
         },
     )
@@ -238,9 +238,9 @@ async def predict(
             save_cached_prediction(X, pred)
 
         return templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "zones": ZONES,
                 "prediction": round(pred, 2),
 
@@ -255,9 +255,9 @@ async def predict(
 
     except Exception as e:
         return templates.TemplateResponse(
+            request,
             "index.html",
             {
-                "request": request,
                 "zones": ZONES,
                 "error": str(e),
             },
